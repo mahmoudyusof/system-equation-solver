@@ -26,8 +26,6 @@ def discrete_d(var, point, deg=1):
     if idx < deg:
         return 0
 
-    idx -= deg
-
     out = np.zeros(var.shape)
     for i in range(1, var.shape[0]):
         out[i] = (var[i] - var[i-1]) / T
