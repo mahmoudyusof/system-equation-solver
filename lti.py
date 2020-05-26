@@ -7,9 +7,14 @@
 # WARNING! All changes made in this file will be lost!
 
 from PyQt5 import QtCore, QtGui, QtWidgets
+import sys
+import numpy as np
+import matplotlib.pyplot as plt
+
 
 class Ui_solver(object):
     def setupUi(self, solver):
+        self.T = 0.01
         solver.setObjectName("solver")
         solver.resize(808, 390)
         self.centralwidget = QtWidgets.QWidget(solver)
@@ -61,8 +66,52 @@ class Ui_solver(object):
         self.statusbar.setObjectName("statusbar")
         solver.setStatusBar(self.statusbar)
 
+        self.unit_pulse.clicked.connect(self.calc_impulse)
+        self.unit_step.clicked.connect(self.calc_step)
+
         self.retranslateUi(solver)
         QtCore.QMetaObject.connectSlotsByName(solver)
+
+    def calc_step(self):
+        y = np.zeros(self.n)
+        b = np.array(list(map(float, self.b_input.text().split(" "))))
+        a = np.array(list(map(float, self.a_input.text().split(" "))))
+        u = np.array([x >= len(a) for x in range(self.n)])
+        for i in range(len(a), len(y)):
+            b_window = u[i-len(b):i]
+            grad = np.array([self.history_diff(y[i-x:i])
+                             for x in range(1, len(a))])
+            y[i] = a[1:].dot(grad)
+            y[i] = y[i] + b_window.dot(b)
+
+        plt.plot([x for x in range(self.n)], y)
+        plt.show()
+
+    def calc_impulse(self):
+        y = np.zeros(self.n)
+        b = np.array(list(map(float, self.b_input.text().split(" "))))
+        a = np.array(list(map(float, self.a_input.text().split(" "))))
+        print(a.shape)
+        u = np.array([x == len(a) for x in range(self.n)])
+        for i in range(len(a), len(y)):
+            b_window = u[i-len(b):i]
+            grad = np.array([self.history_diff(y[i-x:i])
+                             for x in range(1, len(a))])
+            y[i] = a[1:].dot(grad)
+            y[i] = y[i] + b_window.dot(b)
+
+        plt.plot([x for x in range(self.n)], y)
+        plt.show()
+
+    def history_diff(self, inp):
+        if len(inp) == 1:
+            return inp[0]
+
+        out = np.zeros(len(inp)-1)
+        for i in range(len(out)):
+            out[i] = (inp[i+1] - inp[i]) / self.T
+
+        return self.history_diff(out)
 
     def retranslateUi(self, solver):
         _translate = QtCore.QCoreApplication.translate
@@ -72,3 +121,14 @@ class Ui_solver(object):
         self.unit_pulse.setText(_translate("solver", "Unit Impulse"))
         self.unit_step.setText(_translate("solver", "Unit Step"))
 
+
+if __name__ == "__main__":
+    app = QtWidgets.QApplication(sys.argv)
+
+    win = QtWidgets.QMainWindow()
+    ui = Ui_solver()
+    ui.setupUi(win)
+
+    win.show()
+
+    sys.exit(app.exec_())
