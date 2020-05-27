@@ -62,12 +62,18 @@ class Ui_solver(object):
         self.p_label = QtWidgets.QLabel(self.centralwidget)
         self.p_label.setGeometry(QtCore.QRect(30, 190, 111, 16))
         self.p_label.setObjectName("p_label")
+        self.n_label = QtWidgets.QLabel(self.centralwidget)
+        self.n_label.setGeometry(QtCore.QRect(30, 230, 111, 16))
+        self.n_label.setObjectName("n_label")
         self.T_input = QtWidgets.QLineEdit(self.centralwidget)
         self.T_input.setGeometry(QtCore.QRect(160, 150, 113, 23))
         self.T_input.setObjectName("T_input")
         self.p_input = QtWidgets.QLineEdit(self.centralwidget)
         self.p_input.setGeometry(QtCore.QRect(160, 190, 113, 23))
         self.p_input.setObjectName("p_input")
+        self.n_input = QtWidgets.QLineEdit(self.centralwidget)
+        self.n_input.setGeometry(QtCore.QRect(160, 230, 113, 23))
+        self.n_input.setObjectName("n_input")
         solver.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(solver)
         self.menubar.setGeometry(QtCore.QRect(0, 0, 808, 20))
@@ -85,37 +91,43 @@ class Ui_solver(object):
 
     def calc_step(self):
         T = float(self.T_input.text())
-        num_pts = int(self.p_input.text())
-        y = np.zeros(num_pts)
+        max_x = float(self.n_input.text())
+        n_points = int(self.p_input.text())
+
+        y = np.zeros(n_points)
         b = np.array(list(map(float, self.b_input.text().split(" "))))
         a = np.array(list(map(float, self.a_input.text().split(" "))))
-        u = np.array([x >= len(a) for x in range(num_pts)])
+        u = np.array([float(x >= len(a)) for x in np.arange(-2*T, max_x, T)])
         for i in range(len(a), len(y)):
             b_window = u[i-len(b):i]
-            grad = np.array([self.history_diff(y[i-x:i])
+            grad = np.array([self.history_diff(y[i:i+x])
                              for x in range(1, len(a))])
+            print(grad)
             y[i] = a[1:].dot(grad)
             y[i] = y[i] + b_window.dot(b)
 
-        plt.plot([x * T for x in range(num_pts)], y)
+        xs = np.arange(0, max_x, T)
+        plt.plot(xs[:n_points], y)
         plt.show()
 
     def calc_impulse(self):
         T = float(self.T_input.text())
-        num_pts = int(self.p_input.text())
-        y = np.zeros(num_pts)
+        max_x = float(self.n_input.text())
+        n_points = int(self.p_input.text())
+        y = np.zeros(int(max_x / T))
         b = np.array(list(map(float, self.b_input.text().split(" "))))
         a = np.array(list(map(float, self.a_input.text().split(" "))))
-        print(a.shape)
-        u = np.array([x == len(a) for x in range(num_pts)])
+        u = np.array([float(x == 0) for x in np.arange(-2*T, max_x, T)])
         for i in range(len(a), len(y)):
             b_window = u[i-len(b):i]
-            grad = np.array([self.history_diff(y[i-x:i])
+            grad = np.array([self.history_diff(y[i:i+x])
                              for x in range(1, len(a))])
+            print(i)
             y[i] = a[1:].dot(grad)
             y[i] = y[i] + b_window.dot(b)
 
-        plt.plot([x * T for x in range(num_pts)], y)
+        xs = np.arange(0, max_x, T)
+        plt.plot(xs[:n_points], y[:n_points])
         plt.show()
 
     def history_diff(self, inp):
@@ -125,7 +137,7 @@ class Ui_solver(object):
 
         out = np.zeros(len(inp)-1)
         for i in range(len(out)):
-            out[i] = (inp[i+1] - inp[i]) / self.T
+            out[i] = (inp[i+1] - inp[i]) / T
 
         return self.history_diff(out)
 
@@ -138,6 +150,7 @@ class Ui_solver(object):
         self.unit_step.setText(_translate("solver", "Unit Step"))
         self.T_label.setText(_translate("solver", "Time Step T"))
         self.p_label.setText(_translate("solver", "Number of points"))
+        self.n_label.setText(_translate("solver", "Max x value"))
 
 
 if __name__ == "__main__":

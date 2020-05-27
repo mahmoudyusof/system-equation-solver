@@ -18,16 +18,16 @@ def history_diff(inp):
     return history_diff(out)
 
 
-T = 0.01
+T = 1e-4
 
-a = np.array([1, 75e-2])
-b = np.array([1, 5e-1])
+a = np.array([1, 75e-4])
+b = np.array([1, 5e-3])
 
 ys = np.zeros(100)
 
 
 for i in range(2, len(ys)):
-    b_window = step[i-len(b):i]
+    b_window = impulse[i-len(b):i]
     grad = np.array([history_diff(ys[i-x:i]) for x in range(1, len(a))])
     ys[i] = a[1:].dot(grad)
     ys[i] = ys[i] + b_window.dot(b)
