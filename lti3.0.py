@@ -97,37 +97,36 @@ class Ui_solver(object):
         QtCore.QMetaObject.connectSlotsByName(solver)
 
     def full(self, u):
-        self.T = float(self.T_input.text())
+        t = float(self.T_input.text())
         max_x = float(self.max_x_input.text())
-        n_points = int(max_x / self.T)
-        b = np.array(list(map(float, self.b_input.text().split(" "))))
-        a = np.array(list(map(float, self.a_input.text().split(" "))))
-        y = np.zeros(n_points + len(a))
+        n_points = int(max_x / t)
+        B = np.array(
+            list(map(float, self.b_input.text().split(" ")))).reshape(-1, 1)
+        A = np.array(
+            list(map(float, self.a_input.text().split(" ")))).reshape(-1, 1)
+        n = len(A)
+        X = np.zeros((n, n_points))  # check
+        X_0 = np.zeros((n, 1))
+        I = np.identity(n)
+        C = np.zeros(n)
+        C[-1] = 0
+        C = C.reshape(1, -1)
+        D = B[-1]
+        X_ = np.zeros((n, 1))
 
-        if u == "step":
-            u = np.array([int(x >= 0)
-                          for x in np.arange(-len(b) * self.T, max_x, self.T)])
-        else:
-            u = np.array([int(x == 0)
-                          for x in np.arange(-len(b) * self.T, max_x, self.T)])
+        for i in range(n_points):
+            if i:
+                X_ = X[:, i-1]
+                X_ = X_.reshape(-1, 1)
+            else:
+                X_ = np.zeros((n, 1))
+                X_ = X_.reshape(-1, 1)
+            X[:, i] = np.dot(I + t*A, X_).reshape(-1)
+            X[:, i] = X[:, i] + t*B.reshape(-1)
 
-        wierd = np.array([ai/self.T**i for i, ai in enumerate(a)])
+        Y = C.dot(X) + D*u
 
-        for i in range(len(a), len(y)):
-            b_window = u[i-len(b):i]
-            grad = np.array([self.history_diff(y[i-x:i+1])
-                             for x in range(1, len(a))])
-
-            x_grad = np.array([self.history_diff(u[i-x:i+1])
-                               for x in range(1, len(b))])
-
-            y[i] = a[1:].dot(grad) + x_grad.dot(b[1:]) + b[0] * u[i]
-            # y[i] = y[i] / sum(wierd)
-
-        try:
-            plt.plot([x * self.T for x in range(len(y))], y)
-        except ValueError as e:
-            plt.plot([x for x in np.arange(0, max_x, self.T)], y)
+        plt.plot(np.arange(0, max_x, t), Y.reshape(-1, 1))
         plt.show()
 
     def calc_step(self):
@@ -135,16 +134,6 @@ class Ui_solver(object):
 
     def calc_impulse(self):
         self.full("impulse")
-
-    def history_diff(self, inp):
-        if len(inp) == 1:
-            return inp[0]
-
-        out = np.zeros(len(inp)-1)
-        for i in range(len(out)):
-            out[i] = (inp[i+1] - inp[i]) / self.T
-
-        return self.history_diff(out)
 
     def retranslateUi(self, solver):
         _translate = QtCore.QCoreApplication.translate
