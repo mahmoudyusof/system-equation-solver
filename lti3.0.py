@@ -101,33 +101,35 @@ class Ui_solver(object):
         max_x = float(self.max_x_input.text())
         n_points = int(max_x / t)
         B = np.array(
-            list(map(float, self.b_input.text().split(" ")))).reshape(-1, 1)
+            list(map(float, self.b_input.text().split(" "))))
         A = np.array(
-            list(map(float, self.a_input.text().split(" ")))).reshape(-1, 1)
+            list(map(float, self.a_input.text().split(" "))))
         n = len(A)
-        X = np.zeros((n, n_points))  # check
-        X_0 = np.zeros((n, 1))
-        I = np.identity(n)
-        C = np.zeros(n)
-        C[-1] = 0
-        C = C.reshape(1, -1)
-        D = B[-1]
-        X_ = np.zeros((n, 1))
+
+        u = np.ones(n_points, dtype=float)
+        X = np.zeros((n, 1))
+        T = np.zeros((1, n_points))
+        X_t = np.zeros((n, n_points))
+        I = np.identity(n, dtype=float)
+        dA = I - t*A
+        dB = t * B
+        C = np.zeros((1, n))
+        C[0, -1] = 1
+        D = dB[-1]
 
         for i in range(n_points):
-            if i:
-                X_ = X[:, i-1]
-                X_ = X_.reshape(-1, 1)
-            else:
-                X_ = np.zeros((n, 1))
-                X_ = X_.reshape(-1, 1)
-            X[:, i] = np.dot(I + t*A, X_).reshape(-1)
-            X[:, i] = X[:, i] + t*B.reshape(-1)
+            X_t[:, i] = X[:, 0]
+            X = np.dot(dA, X) + dB
+            T[0, i] = i*t
 
-        Y = C.dot(X) + D*u
-
-        plt.plot(np.arange(0, max_x, t), Y.reshape(-1, 1))
+        Y = np.dot(C, X_t) + D*u
+        Y = Y.reshape(-1, 1)
+        T = T.reshape(-1, 1)
+        plt.plot(T, Y)
         plt.show()
+
+        # plt.plot(np.arange(0, max_x, t), Y.reshape(-1, 1))
+        # plt.show()
 
     def calc_step(self):
         self.full("step")

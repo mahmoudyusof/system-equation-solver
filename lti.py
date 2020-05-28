@@ -112,22 +112,25 @@ class Ui_solver(object):
                           for x in np.arange(-len(b) * self.T, max_x, self.T)])
 
         wierd = np.array([ai/self.T**i for i, ai in enumerate(a)])
-
-        for i in range(len(a), len(y)):
+        main_grad = np.zeros(n_points + len(a))
+        for i in range(max(len(a), len(b)), len(y)):
             b_window = u[i-len(b):i]
             grad = np.array([self.history_diff(y[i-x:i+1])
                              for x in range(1, len(a))])
-
+            main_grad[i] = grad[0]
             x_grad = np.array([self.history_diff(u[i-x:i+1])
                                for x in range(1, len(b))])
 
-            y[i] = a[1:].dot(grad) + x_grad.dot(b[1:]) + b[0] * u[i]
-            # y[i] = y[i] / sum(wierd)
+            y[i] = -1*a[1:].dot(grad) + x_grad.dot(b[1:]) + b[0] * u[i]
+            y[i] = y[i] / sum(wierd)
+            # break
 
         try:
             plt.plot([x * self.T for x in range(len(y))], y)
+            plt.plot([x * self.T for x in range(len(main_grad))], main_grad)
         except ValueError as e:
             plt.plot([x for x in np.arange(0, max_x, self.T)], y)
+            plt.plot([x for x in np.arange(0, max_x, self.T)], main_grad)
         plt.show()
 
     def calc_step(self):
@@ -139,6 +142,8 @@ class Ui_solver(object):
     def history_diff(self, inp):
         if len(inp) == 1:
             return inp[0]
+
+        print(len(inp))
 
         out = np.zeros(len(inp)-1)
         for i in range(len(out)):

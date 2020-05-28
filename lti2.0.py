@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'lti2.0.ui'
+# Form implementation generated from reading ui file 'lti.ui'
 #
 # Created by: PyQt5 UI code generator 5.9.2
 #
@@ -44,36 +44,43 @@ class Ui_solver(object):
         self.b_input.setStatusTip("")
         self.b_input.setWhatsThis("")
         self.b_input.setObjectName("b_input")
+
+        self.T_label = QtWidgets.QLabel(self.centralwidget)
+        self.T_label.setGeometry(QtCore.QRect(30, 130, 150, 31))
+        self.T_label.setFont(font)
+        self.T_label.setObjectName("T_label")
+        self.T_input = QtWidgets.QLineEdit(self.centralwidget)
+        self.T_input.setGeometry(QtCore.QRect(190, 130, 100, 31))
+        self.T_input.setToolTip("")
+        self.T_input.setToolTipDuration(1)
+        self.T_input.setStatusTip("")
+        self.T_input.setWhatsThis("")
+        self.T_input.setObjectName("T_input")
+
+        self.max_x_label = QtWidgets.QLabel(self.centralwidget)
+        self.max_x_label.setGeometry(QtCore.QRect(30, 180, 150, 31))
+        self.max_x_label.setFont(font)
+        self.max_x_label.setObjectName("max_x")
+        self.max_x_input = QtWidgets.QLineEdit(self.centralwidget)
+        self.max_x_input.setGeometry(QtCore.QRect(190, 180, 100, 31))
+        self.max_x_input.setToolTip("")
+        self.max_x_input.setToolTipDuration(1)
+        self.max_x_input.setStatusTip("")
+        self.max_x_input.setWhatsThis("")
+        self.max_x_input.setObjectName("max_x_input")
+
         self.unit_pulse = QtWidgets.QPushButton(self.centralwidget)
-        self.unit_pulse.setGeometry(QtCore.QRect(30, 260, 211, 81))
+        self.unit_pulse.setGeometry(QtCore.QRect(30, 230, 211, 81))
         font = QtGui.QFont()
         font.setPointSize(15)
         self.unit_pulse.setFont(font)
         self.unit_pulse.setObjectName("unit_pulse")
         self.unit_step = QtWidgets.QPushButton(self.centralwidget)
-        self.unit_step.setGeometry(QtCore.QRect(560, 260, 211, 81))
+        self.unit_step.setGeometry(QtCore.QRect(560, 230, 211, 81))
         font = QtGui.QFont()
         font.setPointSize(15)
         self.unit_step.setFont(font)
         self.unit_step.setObjectName("unit_step")
-        self.T_label = QtWidgets.QLabel(self.centralwidget)
-        self.T_label.setGeometry(QtCore.QRect(30, 150, 101, 16))
-        self.T_label.setObjectName("T_label")
-        self.p_label = QtWidgets.QLabel(self.centralwidget)
-        self.p_label.setGeometry(QtCore.QRect(30, 190, 111, 16))
-        self.p_label.setObjectName("p_label")
-        self.n_label = QtWidgets.QLabel(self.centralwidget)
-        self.n_label.setGeometry(QtCore.QRect(30, 230, 111, 16))
-        self.n_label.setObjectName("n_label")
-        self.T_input = QtWidgets.QLineEdit(self.centralwidget)
-        self.T_input.setGeometry(QtCore.QRect(160, 150, 113, 23))
-        self.T_input.setObjectName("T_input")
-        self.p_input = QtWidgets.QLineEdit(self.centralwidget)
-        self.p_input.setGeometry(QtCore.QRect(160, 190, 113, 23))
-        self.p_input.setObjectName("p_input")
-        self.n_input = QtWidgets.QLineEdit(self.centralwidget)
-        self.n_input.setGeometry(QtCore.QRect(160, 230, 113, 23))
-        self.n_input.setObjectName("n_input")
         solver.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(solver)
         self.menubar.setGeometry(QtCore.QRect(0, 0, 808, 20))
@@ -83,74 +90,84 @@ class Ui_solver(object):
         self.statusbar.setObjectName("statusbar")
         solver.setStatusBar(self.statusbar)
 
-        self.retranslateUi(solver)
-        QtCore.QMetaObject.connectSlotsByName(solver)
-
         self.unit_pulse.clicked.connect(self.calc_impulse)
         self.unit_step.clicked.connect(self.calc_step)
 
-    def calc_step(self):
-        T = float(self.T_input.text())
-        max_x = float(self.n_input.text())
-        n_points = int(self.p_input.text())
+        self.retranslateUi(solver)
+        QtCore.QMetaObject.connectSlotsByName(solver)
 
-        y = np.zeros(n_points)
+    def full(self, u):
+        self.T = float(self.T_input.text())
+        max_x = float(self.max_x_input.text())
+        n_points = int(max_x / self.T)
         b = np.array(list(map(float, self.b_input.text().split(" "))))
         a = np.array(list(map(float, self.a_input.text().split(" "))))
-        u = np.array([float(x >= len(a)) for x in np.arange(-2*T, max_x, T)])
-        for i in range(len(a), len(y)):
-            b_window = u[i-len(b):i]
-            grad = np.array([self.history_diff(y[i:i+x])
-                             for x in range(1, len(a))])
-            print(grad)
-            y[i] = a[1:].dot(grad)
-            y[i] = y[i] + b_window.dot(b)
+        y = np.zeros(n_points + len(a)-1)
 
-        xs = np.arange(0, max_x, T)
-        plt.plot(xs[:n_points], y)
+        if u == "step":
+            u = np.array([int(x >= 0)
+                          for x in np.arange(-(len(a) - 1) * self.T, max_x, self.T)])
+        else:
+            u = np.array([int(x == 0)
+                          for x in np.arange(-(len(a) - 1) * self.T, max_x, self.T)])
+
+        main_grad = np.zeros(n_points + len(a)-1)
+
+        for i in range(len(a), n_points):
+            grad = np.array([self.history_diff(y[i-x:i+1])
+                             for x in range(1, len(a))])
+            x_grad = np.array([self.history_diff(u[i-x:i+1])
+                               for x in range(1, len(b))])
+            y_scaled = -1 * a[1:].dot(grad)
+            y_scaled = y_scaled + b[1:].dot(x_grad) + b[0] * u[i+1]
+            # y_scaled = y_scaled + b.dot(u[i-len(b):i])
+            scaler = sum([a[j] / (self.T ** j) for j in range(len(a))])
+            y[i] = y_scaled / scaler
+            # y[i] = y_scaled
+            main_grad[i] = grad[0]
+
+        X = [x for x in np.arange(-(len(a)-1)*self.T, max_x, self.T)]
+        if len(X) > len(y):
+            plt.plot(X[:-len(a)], y[:-len(a)+1])
+        else:
+            plt.plot(X[:-len(a)+1], y[:-len(a)+1])
+
+        # try:
+        #     plt.plot(
+        #         [x * self.T for x in range(len(y) - len(a) + 1)], y[:-len(a)+1])
+        #     # plt.plot([x * self.T for x in range(len(main_grad))], main_grad)
+        # except ValueError as e:
+        #     plt.plot([x for x in np.arange(0, max_x, self.T)], y)
+        #     # plt.plot([x for x in np.arange(0, max_x, self.T)], main_grad)
         plt.show()
+
+    def calc_step(self):
+        self.full("step")
 
     def calc_impulse(self):
-        T = float(self.T_input.text())
-        max_x = float(self.n_input.text())
-        n_points = int(self.p_input.text())
-        y = np.zeros(int(max_x / T))
-        b = np.array(list(map(float, self.b_input.text().split(" "))))
-        a = np.array(list(map(float, self.a_input.text().split(" "))))
-        u = np.array([float(x == 0) for x in np.arange(-2*T, max_x, T)])
-        for i in range(len(a), len(y)):
-            b_window = u[i-len(b):i]
-            grad = np.array([self.history_diff(y[i:i+x])
-                             for x in range(1, len(a))])
-            print(i)
-            y[i] = a[1:].dot(grad)
-            y[i] = y[i] + b_window.dot(b)
-
-        xs = np.arange(0, max_x, T)
-        plt.plot(xs[:n_points], y[:n_points])
-        plt.show()
+        self.full("impulse")
 
     def history_diff(self, inp):
-        T = float(self.T_input.text())
         if len(inp) == 1:
             return inp[0]
 
+        # print(len(inp))
+
         out = np.zeros(len(inp)-1)
         for i in range(len(out)):
-            out[i] = (inp[i+1] - inp[i]) / T
+            out[i] = (inp[i+1] - inp[i]) / self.T
 
         return self.history_diff(out)
 
     def retranslateUi(self, solver):
         _translate = QtCore.QCoreApplication.translate
-        solver.setWindowTitle(_translate("solver", "LTI Solver 2.0"))
+        solver.setWindowTitle(_translate("solver", "LTI Solver 1.0"))
         self.a_label.setText(_translate("solver", "Vector a"))
         self.b_label.setText(_translate("solver", "Vector b"))
+        self.T_label.setText(_translate("solver", "Time Step"))
+        self.max_x_label.setText(_translate("solver", "Max X"))
         self.unit_pulse.setText(_translate("solver", "Unit Impulse"))
         self.unit_step.setText(_translate("solver", "Unit Step"))
-        self.T_label.setText(_translate("solver", "Time Step T"))
-        self.p_label.setText(_translate("solver", "Number of points"))
-        self.n_label.setText(_translate("solver", "Max x value"))
 
 
 if __name__ == "__main__":
